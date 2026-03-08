@@ -13,6 +13,7 @@ const ScanPlans = () => {
   const [editing, setEditing] = useState<any>(null)
   const [availableTools, setAvailableTools] = useState<any[]>([])
   const [toolsLoading, setToolsLoading] = useState(false)
+  const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -36,7 +37,12 @@ const ScanPlans = () => {
     setToolsLoading(true)
     try {
       const data = await toolsAPI.list()
-      const enabledTools = Array.isArray(data) ? data.filter((tool: any) => tool.enabled) : []
+      console.log('[ScanPlans] Tools loaded:', data)
+      const enabledTools = Array.isArray(data) ? data.filter((tool: any) => {
+        if (!tool) return false
+        return tool.enabled === true
+      }) : []
+      console.log('[ScanPlans] Enabled tools:', enabledTools)
       setAvailableTools(enabledTools)
     } catch (error) {
       message.error('加载工具列表失败')
@@ -49,6 +55,7 @@ const ScanPlans = () => {
     loadTools()
     setEditing(plan || null)
     setModalVisible(true)
+
     if (plan) {
       const toolConfigs: Record<string, string> = {}
       plan.tools?.forEach((t: any) => {
@@ -56,16 +63,26 @@ const ScanPlans = () => {
           toolConfigs[`command_${t.tool_name}`] = t.config.command_template
         }
       })
+      const toolsList = plan.tools?.filter((t: any) => t.enabled).map((t: any) => t.tool_name) || []
+      setSelectedTools(toolsList)
+
       form.setFieldsValue({
         name: plan.name,
         description: plan.description,
-        tools: plan.tools?.filter((t: any) => t.enabled).map((t: any) => t.tool_name) || [],
+        tools: toolsList,
         optionsText: plan.options ? JSON.stringify(plan.options, null, 2) : '',
         ...toolConfigs,
       })
     } else {
+      setSelectedTools([])
       form.resetFields()
     }
+  }
+
+  const handleToolsChange = (checkedValues: any[]) => {
+    console.log('[ScanPlans] Tools changed:', checkedValues)
+    setSelectedTools(checkedValues || [])
+    form.setFieldsValue({ tools: checkedValues })
   }
 
   const handleSubmit = async (values: any) => {
@@ -108,6 +125,7 @@ const ScanPlans = () => {
         message.success('方案创建成功')
       }
       setModalVisible(false)
+      setSelectedTools([])
       form.resetFields()
       loadPlans()
     } catch (error: any) {
@@ -316,6 +334,7 @@ const ScanPlans = () => {
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false)
+          setSelectedTools([])
           form.resetFields()
         }}
         onOk={() => form.submit()}
@@ -362,84 +381,91 @@ const ScanPlans = () => {
             name="tools"
             label={<span style={{ color: '#CBD5E1' }}>启用的工具</span>}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {availableTools.map((tool: any) => (
-                <Checkbox key={tool.id} value={tool.name}>
-                  <span style={{ color: '#CBD5E1', fontWeight: 500 }}>{tool.display_name || tool.name}</span>
-                  {tool.description && (
-                    <span style={{ color: '#64748B', marginLeft: 8, fontSize: 12 }}>
-                      - {tool.description}
-                    </span>
-                  )}
-                </Checkbox>
-              ))}
-              {availableTools.length === 0 && !toolsLoading && (
-                <span style={{ color: '#94A3B8' }}>暂无可用工具，请先在工具管理中上传并启用工具</span>
-              )}
-              {toolsLoading && (
-                <span style={{ color: '#94A3B8' }}>加载中...</span>
-              )}
-            </Space>
+            <Checkbox.Group onChange={handleToolsChange} style={{ width: '100%' }}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {availableTools.map((tool: any, index: number) => {
+                  if (!tool) {
+                    console.warn(`[ScanPlans] Tool at index ${index} is undefined`)
+                    return null
+                  }
+                  const toolName = tool.name || tool.tool_name || `tool-${index}`
+                  const toolId = tool.id || toolName || index
+                  return (
+                    <Checkbox key={String(toolId)} value={toolName}>
+                      <span style={{ color: '#CBD5E1', fontWeight: 500 }}>{tool.display_name || tool.name || '未命名工具'}</span>
+                      {tool.description && (
+                        <span style={{ color: '#64748B', marginLeft: 8, fontSize: 12 }}>
+                          - {tool.description}
+                        </span>
+                      )}
+                    </Checkbox>
+                  )
+                })}
+                {availableTools.length === 0 && !toolsLoading && (
+                  <span style={{ color: '#94A3B8' }}>暂无可用工具，请先在工具管理中上传并启用工具</span>
+                )}
+                {toolsLoading && (
+                  <span style={{ color: '#94A3B8' }}>加载中...</span>
+                )}
+              </Space>
+            </Checkbox.Group>
           </Form.Item>
 
-          <Form.Item
-            label={<span style={{ color: '#CBD5E1' }}>工具命令配置</span>}
-            extra={<span style={{ color: '#64748B' }}>为每个启用的工具配置完整的命令模板，支持变量：{'{targets}'}, {'{ports}'}, {'{domain}'} 等</span>}
-          >
-            <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.tools !== currentValues.tools}>
-              {({ getFieldValue }) => {
-                const selectedTools = getFieldValue('tools') || []
-                if (selectedTools.length === 0) {
-                  return <span style={{ color: '#64748B' }}>请先选择要启用的工具</span>
-                }
-                return (
-                  <Collapse
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      borderColor: 'rgba(148, 163, 184, 0.2)',
-                    }}
-                  >
-                    {selectedTools.map((toolName: string) => {
-                      const tool = availableTools.find((t: any) => t.name === toolName)
-                      const defaultCommand = tool?.command_template || ''
-                      return (
-                        <Panel
-                          header={
-                            <span style={{ color: '#F8FAFC' }}>
-                              {tool?.display_name || toolName}
-                              {defaultCommand && (
-                                <span style={{ color: '#64748B', fontSize: 12, marginLeft: 8 }}>
-                                  (默认: {defaultCommand})
-                                </span>
-                              )}
+          {selectedTools.length > 0 && (
+            <Form.Item
+              label={<span style={{ color: '#CBD5E1' }}>工具命令配置</span>}
+              extra={<span style={{ color: '#64748B' }}>为每个启用的工具配置完整的命令模板，支持变量：{'{targets}'}, {'{ports}'}, {'{domain}'} 等</span>}
+            >
+              <Collapse
+                style={{
+                  background: 'rgba(51, 65, 85, 0.5)',
+                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                }}
+              >
+                {selectedTools.map((toolName: string, index: number) => {
+                  if (!toolName) {
+                    console.warn('[ScanPlans] Empty tool name at index', index)
+                    return null
+                  }
+                  const tool = availableTools.find((t: any) => t?.name === toolName)
+                  const defaultCommand = tool?.command_template || ''
+                  const displayName = tool?.display_name || toolName
+                  return (
+                    <Panel
+                      header={
+                        <span style={{ color: '#F8FAFC' }}>
+                          {displayName}
+                          {defaultCommand && (
+                            <span style={{ color: '#64748B', fontSize: 12, marginLeft: 8 }}>
+                              (默认: {defaultCommand})
                             </span>
-                          }
-                          key={toolName}
-                        >
-                          <Form.Item
-                            name={`command_${toolName}`}
-                            label={<span style={{ color: '#CBD5E1' }}>{tool?.display_name || toolName} 命令模板</span>}
-                            extra={<span style={{ color: '#64748B' }}>完整命令模板，将覆盖工具的默认命令。例如：nmap -sV -p {'{ports}'} -oX - {'{targets}'}</span>}
-                          >
-                            <Input.TextArea
-                              rows={2}
-                              placeholder={defaultCommand || `输入 ${toolName} 的完整命令模板`}
-                              style={{
-                                background: 'rgba(15, 23, 42, 0.5)',
-                                borderColor: 'rgba(148, 163, 184, 0.2)',
-                                color: '#F8FAFC',
-                                borderRadius: 8,
-                              }}
-                            />
-                          </Form.Item>
-                        </Panel>
-                      )
-                    })}
-                  </Collapse>
-                )
-              }}
+                          )}
+                        </span>
+                      }
+                      key={`panel-${toolName}-${index}`}
+                    >
+                      <Form.Item
+                        name={`command_${toolName}`}
+                        label={<span style={{ color: '#CBD5E1' }}>{displayName} 命令模板</span>}
+                        extra={<span style={{ color: '#64748B' }}>完整命令模板，将覆盖工具的默认命令。例如：nmap -sV -p {'{ports}'} -oX - {'{targets}'}</span>}
+                      >
+                        <Input.TextArea
+                          rows={2}
+                          placeholder={defaultCommand || `输入 ${toolName} 的完整命令模板`}
+                          style={{
+                            background: 'rgba(15, 23, 42, 0.5)',
+                            borderColor: 'rgba(148, 163, 184, 0.2)',
+                            color: '#F8FAFC',
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Panel>
+                  )
+                })}
+              </Collapse>
             </Form.Item>
-          </Form.Item>
+          )}
 
           <Form.Item
             name="optionsText"
