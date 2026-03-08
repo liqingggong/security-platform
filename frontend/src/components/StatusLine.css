@@ -1,0 +1,192 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Fixed Status Line at Top */
+.status-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  background: linear-gradient(90deg, #161b22 0%, #1c2128 100%);
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 10000;
+  font-family: 'JetBrains Mono', monospace;
+  backdrop-filter: blur(10px);
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.context-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-container {
+  width: 120px;
+  height: 6px;
+  background: #21262d;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.2) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-bar.low {
+  background: linear-gradient(90deg, #238636 0%, #2ea043 100%);
+  box-shadow: 0 0 8px rgba(35, 134, 54, 0.4);
+}
+
+.progress-bar.medium {
+  background: linear-gradient(90deg, #d29922 0%, #e3b341 100%);
+  box-shadow: 0 0 8px rgba(210, 153, 34, 0.4);
+}
+
+.progress-bar.high {
+  background: linear-gradient(90deg, #da3633 0%, #f85149 100%);
+  box-shadow: 0 0 12px rgba(218, 54, 51, 0.6);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.percentage-text {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+.percentage-text.low { color: #3fb950; }
+.percentage-text.medium { color: #d29922; }
+.percentage-text.high { color: #f85149; }
+
+.token-details {
+  font-size: 11px;
+  color: #6e7681;
+  margin-left: 4px;
+}
+
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(88, 166, 255, 0.2);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3fb950;
+  box-shadow: 0 0 6px #3fb950;
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: #6e7681;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #e6edf3;
+}
+
+/* Toggle button when hidden */
+.status-line-toggle {
+  position: fixed;
+  top: 8px;
+  right: 16px;
+  width: 24px;
+  height: 24px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10000;
+  padding: 0;
+}
+
+.toggle-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3fb950;
+  box-shadow: 0 0 6px #3fb950;
+}
+
+/* Push content down when status line is visible */
+.status-line + .main-content,
+.status-line ~ .main-content {
+  margin-top: 32px;
+}

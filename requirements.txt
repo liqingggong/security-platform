@@ -1,0 +1,31 @@
+# Python 3.9.18 相容版本（已針對 FastAPI 0.109.0 / Pydantic v2 進行整理）
+# 若你使用公司/內網 pip 鏡像，請確認該鏡像有同步 PyPI，否則仍可能出現 "from versions: none"。
+
+fastapi==0.109.0
+starlette==0.35.1
+
+uvicorn[standard]==0.27.0
+
+celery==5.3.6
+redis==5.0.1
+
+SQLAlchemy==2.0.25
+psycopg2-binary==2.9.9
+
+pydantic==2.5.3
+pydantic-core==2.14.6
+pydantic-settings==2.1.0
+email-validator==2.3.0
+
+python-dotenv==1.0.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.20
+
+requests==2.31.0
+
+# 測試依賴
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.24.1

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context Window Status Line</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #0d1117;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Fixed Status Line at Top */
+        .status-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: linear-gradient(90deg, #161b22 0%, #1c2128 100%);
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 10000;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .context-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-container {
+            width: 120px;
+            height: 6px;
+            background: #21262d;
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255,255,255,0.2) 50%,
+                transparent 100%
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-bar.low {
+            background: linear-gradient(90deg, #238636 0%, #2ea043 100%);
+            box-shadow: 0 0 8px rgba(35, 134, 54, 0.4);
+        }
+
+        .progress-bar.medium {
+            background: linear-gradient(90deg, #d29922 0%, #e3b341 100%);
+            box-shadow: 0 0 8px rgba(210, 153, 34, 0.4);
+        }
+
+        .progress-bar.high {
+            background: linear-gradient(90deg, #da3633 0%, #f85149 100%);
+            box-shadow: 0 0 12px rgba(218, 54, 51, 0.6);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .percentage-text {
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .percentage-text.low { color: #3fb950; }
+        .percentage-text.medium { color: #d29922; }
+        .percentage-text.high { color: #f85149; }
+
+        .token-details {
+            font-size: 11px;
+            color: #6e7681;
+            margin-left: 4px;
+        }
+
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .model-badge {
+            font-size: 10px;
+            font-weight: 500;
+            color: #58a6ff;
+            background: rgba(88, 166, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(88, 166, 255, 0.2);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #3fb950;
+            box-shadow: 0 0 6px #3fb950;
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Main content area */
+        .content {
+            margin-top: 32px;
+            padding: 24px;
+            flex: 1;
+        }
+
+        .demo-section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #e6edf3;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #7d8590;
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        .control-panel {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .control-title {
+            color: #e6edf3;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .slider-container {
+            margin-bottom: 16px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            color: #8b949e;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #21262d;
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #58a6ff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(88, 166, 255, 0.5);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .info-card {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #e6edf3;
+            margin-bottom: 4px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #6e7681;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Always Visible Status Line -->
+    <div class="status-line">
+        <div class="status-left">
+            <span class="status-label">Context</span>
+            <div class="context-indicator">
+                <div class="progress-container">
+                    <div class="progress-bar low" id="progressBar" style="width: 35%"></div>
+                </div>
+                <span class="percentage-text low" id="percentageText">35%</span>
+                <span class="token-details" id="tokenDetails">(70k/200k)</span>
+            </div>
+        </div>
+        <div class="status-right">
+            <span class="model-badge" id="modelBadge">kimi-K2.5-thinking</span>
+            <div class="status-dot"></div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content">
+        <div class="demo-section">
+            <h1>Context Window Status Line</h1>
+            <p class="subtitle">Always-visible context window monitoring</p>
+
+            <div class="control-panel">
+                <div class="control-title">Demo Controls</div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Context Usage</span>
+                        <span id="sliderValue">35%</span>
+                    </div>
+                    <input type="range" id="contextSlider" min="0" max="100" value="35">
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-value" id="usedTokens">70k</div>
+                        <div class="info-label">Used</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-value" id="maxTokens">200k</div>
+                        <div class="info-label">Max</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-value" id="remainingTokens">130k</div>
+                        <div class="info-label">Remaining</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const slider = document.getElementById('contextSlider');
+        const progressBar = document.getElementById('progressBar');
+        const percentageText = document.getElementById('percentageText');
+        const sliderValue = document.getElementById('sliderValue');
+        const tokenDetails = document.getElementById('tokenDetails');
+        const usedTokens = document.getElementById('usedTokens');
+        const remainingTokens = document.getElementById('remainingTokens');
+
+        const MAX_TOKENS = 200;
+
+        function updateStatus(percentage) {
+            const used = Math.round((percentage / 100) * MAX_TOKENS);
+            const remaining = MAX_TOKENS - used;
+
+            // Update progress bar
+            progressBar.style.width = percentage + '%';
+
+            // Update classes based on percentage
+            progressBar.className = 'progress-bar';
+            percentageText.className = 'percentage-text';
+
+            if (percentage < 50) {
+                progressBar.classList.add('low');
+                percentageText.classList.add('low');
+            } else if (percentage < 80) {
+                progressBar.classList.add('medium');
+                percentageText.classList.add('medium');
+            } else {
+                progressBar.classList.add('high');
+                percentageText.classList.add('high');
+            }
+
+            // Update text
+            percentageText.textContent = percentage + '%';
+            sliderValue.textContent = percentage + '%';
+            tokenDetails.textContent = `(${used}k/${MAX_TOKENS}k)`;
+            usedTokens.textContent = used + 'k';
+            remainingTokens.textContent = remaining + 'k';
+        }
+
+        slider.addEventListener('input', (e) => {
+            updateStatus(parseInt(e.target.value));
+        });
+
+        // Simulate real-time updates (optional)
+        setInterval(() => {
+            // In real implementation, this would fetch actual context usage
+            // from your Claude Code session
+        }, 1000);
+
+        // Initial update
+        updateStatus(35);
+    </script>
+</body>
+</html>
