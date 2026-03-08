@@ -115,10 +115,21 @@ api.interceptors.response.use(
         // 刷新失败，清除所有 token
         removeTokens()
         error.isUnauthorized = true
+        // 自动跳转到登录页
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login'
+        }
         return Promise.reject(error)
       }
     }
 
+    // 处理 401 错误 - 重定向到登录页
+    if (error.response?.status === 401) {
+      removeTokens()
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
     return Promise.reject(error)
   }
 )
