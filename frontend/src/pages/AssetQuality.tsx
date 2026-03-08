@@ -33,11 +33,13 @@ const AssetQuality = () => {
   const fetchStats = async () => {
     setLoading(true)
     try {
+      console.log('[AssetQuality Debug] Fetching stats...')
       const data = await api.get('/assets/stats/quality')
+      console.log('[AssetQuality Debug] Response:', data)
       setStats(data as AssetQualityStats)
     } catch (error: any) {
+      console.error('[AssetQuality Debug] Error:', error?.response?.data || error?.message || error)
       message.error('加载资产质量统计失败')
-      console.error('Error fetching quality stats:', error)
     } finally {
       setLoading(false)
     }

@@ -36,6 +36,8 @@ def list_assets(
     tenant_id: int = Depends(get_current_tenant_id),
     _: models.User = Depends(get_current_user),
 ):
+    # DEBUG: Print request parameters
+    print(f"[Assets Debug] Request: skip={skip}, limit={limit}, task_id={task_id}, tenant_id={tenant_id}")
     """
     列出當前租戶的所有資產
     支持按類型、任務ID、搜索關鍵字過濾
@@ -94,6 +96,8 @@ def list_assets(
 
     total = query.count()
     assets = query.order_by(models.Asset.discovered_at.desc()).offset(skip).limit(limit).all()
+    # DEBUG: Print response
+    print(f"[Assets Debug] Response: total={total}, returned={len(assets)}, skip={skip}, limit={limit}")
     return {"items": assets, "total": total}
 
 
@@ -409,6 +413,7 @@ def get_asset_quality_stats(
     tenant_id: int = Depends(get_current_tenant_id),
     _: models.User = Depends(get_current_user),
 ):
+    print(f"[Assets Quality Debug] Request: tenant_id={tenant_id}")
     """
     Get asset quality statistics.
 
@@ -485,4 +490,5 @@ def get_asset_quality_stats(
             "rate": multi_source_rate,
         },
     }
+    print(f"[Assets Quality Debug] Response: total={total}")
 

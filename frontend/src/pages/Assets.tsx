@@ -34,11 +34,16 @@ const Assets = () => {
       if (searchText) {
         params.search = searchText
       }
+      // DEBUG: 打印请求参数
+      console.log('[Assets Debug] Request params:', { page: currentPage, pageSize, skip, limit, taskId: selectedTaskId })
       const resp = await assetsAPI.list(params)
+      // DEBUG: 打印响应
+      console.log('[Assets Debug] Response:', { items: resp?.items?.length, total: resp?.total })
       const items = Array.isArray(resp?.items) ? resp.items : []
       setAssets(items)
       setTotal(typeof resp?.total === 'number' ? resp.total : items.length)
     } catch (error) {
+      console.error('[Assets Debug] Error:', error)
       message.error('加载资产列表失败')
     } finally {
       setLoading(false)
