@@ -209,8 +209,8 @@ const Login = () => {
                 style={{
                   height: 52,
                   borderRadius: 12,
-                  border: '1px solid rgba(148, 163, 184, 0.2)',
-                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(148, 163, 184, 0.3)',
+                  background: 'rgba(30, 41, 59, 0.95)',
                   color: '#F8FAFC',
                 }}
               />
@@ -243,8 +243,8 @@ const Login = () => {
                 style={{
                   height: 52,
                   borderRadius: 12,
-                  border: '1px solid rgba(148, 163, 184, 0.2)',
-                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(148, 163, 184, 0.3)',
+                  background: 'rgba(30, 41, 59, 0.95)',
                   color: '#F8FAFC',
                 }}
               />

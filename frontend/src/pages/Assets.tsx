@@ -18,7 +18,7 @@ const Assets = () => {
   const [exportModalVisible, setExportModalVisible] = useState(false)
   const [exportLimit, setExportLimit] = useState(10000)
 
-  const loadAssets = useCallback(async () => {
+  const loadAssets = useCallback(async (page?: number, size?: number) => {
     if (!selectedTaskId) {
       setAssets([])
       return
@@ -26,8 +26,10 @@ const Assets = () => {
 
     setLoading(true)
     try {
-      const skip = (pagination.current - 1) * pagination.pageSize
-      const limit = pagination.pageSize
+      const currentPage = page ?? pagination.current
+      const pageSize = size ?? pagination.pageSize
+      const skip = (currentPage - 1) * pageSize
+      const limit = pageSize
       const params: any = { task_id: selectedTaskId, skip, limit }
       if (searchText) {
         params.search = searchText
@@ -41,7 +43,7 @@ const Assets = () => {
     } finally {
       setLoading(false)
     }
-  }, [selectedTaskId, pagination.current, pagination.pageSize, searchText])
+  }, [selectedTaskId, pagination, searchText])
 
   // Load tasks on mount
   useEffect(() => {
@@ -59,26 +61,24 @@ const Assets = () => {
     setPagination((prev) => ({ ...prev, current: 1 }))
   }, [selectedTaskId])
 
-  // Load assets when pagination changes
+  // Load assets when selected task changes
   useEffect(() => {
     if (!selectedTaskId) return
-    loadAssets()
-  }, [selectedTaskId, pagination.current, pagination.pageSize, loadAssets])
+    loadAssets(1, pagination.pageSize)
+  }, [selectedTaskId])
 
   // Load assets when search text changes
   useEffect(() => {
     if (!selectedTaskId) return
     if (!searchText) {
-      setPagination((prev) => ({ ...prev, current: 1 }))
-      loadAssets()
+      loadAssets(1, pagination.pageSize)
       return
     }
     const timer = setTimeout(() => {
-      setPagination((prev) => ({ ...prev, current: 1 }))
-      loadAssets()
+      loadAssets(1, pagination.pageSize)
     }, 500)
     return () => clearTimeout(timer)
-  }, [searchText])
+  }, [searchText, selectedTaskId, pagination.pageSize])
 
   const loadTasks = async () => {
     try {
@@ -91,7 +91,7 @@ const Assets = () => {
 
   const handleSearch = () => {
     setPagination((prev) => ({ ...prev, current: 1 }))
-    loadAssets()
+    loadAssets(1, pagination.pageSize)
   }
 
   const handleExport = () => {
@@ -492,7 +492,7 @@ const Assets = () => {
           <Space size={12}>
             <Button
               icon={<ReloadOutlined />}
-              onClick={loadAssets}
+              onClick={() => loadAssets(pagination.current, pagination.pageSize)}
               disabled={!selectedTaskId}
               style={{
                 borderRadius: 8,
@@ -601,7 +601,9 @@ const Assets = () => {
               showSizeChanger: true,
               pageSizeOptions: ['10', '20', '50', '100'],
               onChange: (page, pageSize) => {
-                setPagination({ current: page, pageSize: pageSize ?? pagination.pageSize })
+                const newPageSize = pageSize ?? pagination.pageSize
+                setPagination({ current: page, pageSize: newPageSize })
+                loadAssets(page, newPageSize)
               },
             }}
             scroll={{ x: 1200 }}

@@ -8,6 +8,7 @@ import {
   GlobalOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons'
+import api from '../utils/api'
 
 // Types for asset quality statistics (matches backend API response)
 interface CoverageItem {
@@ -32,20 +33,9 @@ const AssetQuality = () => {
   const fetchStats = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/v1/assets/stats/quality', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch quality stats')
-      }
-
-      const data = await response.json()
-      setStats(data)
-    } catch (error) {
+      const data = await api.get('/assets/stats/quality')
+      setStats(data as AssetQualityStats)
+    } catch (error: any) {
       message.error('加载资产质量统计失败')
       console.error('Error fetching quality stats:', error)
     } finally {
@@ -57,31 +47,19 @@ const AssetQuality = () => {
   const handleEnhance = async () => {
     setEnhancing(true)
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/v1/assets/enhance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          enable_cdn_detection: true,
-          enable_protocol_inference: true,
-          enable_fingerprint: true,
-          enable_dedup: true,
-        }),
+      await api.post('/assets/enhance', {
+        enable_cdn_detection: true,
+        enable_protocol_inference: true,
+        enable_fingerprint: true,
+        enable_dedup: true,
       })
-
-      if (!response.ok) {
-        throw new Error('Enhancement failed')
-      }
 
       message.success('资产增强任务已启动')
       // Refresh stats after a short delay
       setTimeout(() => {
         fetchStats()
       }, 1000)
-    } catch (error) {
+    } catch (error: any) {
       message.error('资产增强失败')
       console.error('Error enhancing assets:', error)
     } finally {
