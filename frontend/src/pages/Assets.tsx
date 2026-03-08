@@ -294,11 +294,17 @@ const Assets = () => {
     },
     {
       title: 'URL',
-      dataIndex: 'url',
       key: 'url',
       ellipsis: true,
-      render: (url: string) =>
-        url ? (
+      render: (_: any, record: any) => {
+        // 优先使用 url 字段，如果没有则尝试从 domain/port/protocol 组合生成
+        let url = record?.url
+        if (!url && record?.domain && record?.port) {
+          const protocol = record?.protocol || 'http'
+          url = `${protocol}://${record.domain}:${record.port}`
+        }
+
+        return url ? (
           <a
             href={url}
             target="_blank"
@@ -316,7 +322,8 @@ const Assets = () => {
           </a>
         ) : (
           <span style={{ color: '#64748B' }}>-</span>
-        ),
+        )
+      },
     },
     {
       title: 'IP 地址',

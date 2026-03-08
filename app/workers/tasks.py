@@ -296,6 +296,12 @@ def _upsert_aggregated_asset(
 
     norm_domain = (domain or "").strip().lower() or None
     norm_url = (url or "").strip() or None
+
+    # 如果 URL 为空但有 domain 和 port，自动生成 URL
+    if not norm_url and norm_domain and port:
+        proto = (protocol or "http").lower()
+        norm_url = f"{proto}://{norm_domain}:{port}"
+
     current_time = datetime.utcnow()
 
     query = db.query(Asset).filter(Asset.tenant_id == tenant_id)
@@ -1459,8 +1465,8 @@ def run_pipeline(task_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         # ----------------------------
         first_jobs = []
 
-        # FOFA 任務：檢查 enable 配置，預設啟用
-        if enable.get("fofa", True):
+        # FOFA 任務：檢查 enable 配置，預設禁用（必須明確啟用）
+        if enable.get("fofa", False):
             if payload.get("fofa_query"):
                 first_jobs.append(run_fofa_pull.s(task_id, payload))
             
@@ -1477,8 +1483,8 @@ def run_pipeline(task_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
                     p["fofa_query"] = f'ip="{ip}"'
                     first_jobs.append(run_fofa_pull.s(task_id, p))
 
-        # Hunter 任務：檢查 enable 配置，預設啟用
-        if enable.get("hunter", True):
+        # Hunter 任務：檢查 enable 配置，預設禁用（必須明確啟用）
+        if enable.get("hunter", False):
             if payload.get("hunter_query"):
                 first_jobs.append(run_hunter_pull.s(task_id, payload))
             
@@ -1500,7 +1506,7 @@ def run_pipeline(task_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
             return {"error": "no fofa/hunter jobs"}
 
         # 如果啟用 subfinder，將其加入第一輪 jobs
-        if root_domains and enable.get("subfinder", True):
+        if root_domains and enable.get("subfinder", False):
             subfinder_payload = {"root_domains": root_domains, "plan_tool_configs": payload.get("plan_tool_configs") or {}}
             first_jobs.append(run_subfinder.s(task_id, subfinder_payload))
 
@@ -1907,14 +1913,14 @@ def check_and_aggregate(task_id: int, child_task_ids: Dict[str, List[str]], max_
                         # 第二輪：對新 domain 逐個查 FOFA/Hunter
                         second_jobs = []
                         for d in new_domains:
-                            # FOFA 任務：檢查 enable 配置，預設啟用
-                            if enable.get("fofa", True):
+                            # FOFA 任務：檢查 enable 配置，預設禁用（必須明確啟用）
+                            if enable.get("fofa", False):
                                 p1 = dict(original_payload)
                                 p1["fofa_query"] = f'domain="{d}"'
                                 second_jobs.append(run_fofa_pull.s(task_id, p1))
                             
-                            # Hunter 任務：檢查 enable 配置，預設啟用
-                            if enable.get("hunter", True):
+                            # Hunter 任務：檢查 enable 配置，預設禁用（必須明確啟用）
+                            if enable.get("hunter", False):
                                 p2 = dict(original_payload)
                                 p2["hunter_query"] = f'domain="{d}"'
                                 second_jobs.append(run_hunter_pull.s(task_id, p2))
@@ -2180,7 +2186,7 @@ def check_and_aggregate(task_id: int, child_task_ids: Dict[str, List[str]], max_
                                             _log_task(task_id, "aggregate", f"第二輪聚合失敗（超時後）({type(e).__name__}): {str(e)}", level="error")
 
             output_data = aggregate_pipeline_results(task_id, results)
-            _update_task(task_id, progress=100, output_data=output_data)
+            _update_task(task_id, status=TaskStatus.COMPLETED, progress=100, output_data=output_data)
             return {"status": "completed", "results_count": len(results), "second_round_tasks": len(second_round_ids)}
         finally:
             db.close()
