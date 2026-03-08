@@ -53,6 +53,11 @@ class TestProtocolInferenceService:
         """Create a ProtocolInferenceService instance."""
         return ProtocolInferenceService()
 
+    def test_infer_protocol_from_banner(self, service):
+        """Test banner inference for protocol detection."""
+        assert service.infer_from_banner("HTTP/1.1 200 OK") == "http"
+        assert service.infer_from_banner("HTTPS server") == "https"
+
     def test_infer_from_banner_https_indicators(self, service):
         """Test banner analysis with HTTPS indicators."""
         # Test with HTTPS indicators
@@ -82,6 +87,12 @@ class TestProtocolInferenceService:
         """Test that HTTPS indicators take priority over HTTP indicators."""
         # HTTPS should win when both indicators present
         assert service.infer_from_banner("HTTP/1.1 200 OK with SSL certificate") == "https"
+
+    def test_enhance_asset_protocol(self, service):
+        """Test asset protocol enhancement."""
+        asset = {"port": 443, "protocol": None}
+        result = service.enhance_asset(asset)
+        assert result["protocol"] == "https"
 
     def test_enhance_asset_protocol_missing(self, service):
         """Test enhancing asset with missing protocol."""
