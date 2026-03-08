@@ -41,10 +41,14 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        return (
-            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
+        # Use SQLite for development/testing
+        sqlite_path = self.BASE_DIR / "test.db"
+        return f"sqlite:///{sqlite_path}"
+        # Uncomment for PostgreSQL production:
+        # return (
+        #     f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+        #     f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        # )
 
     @property
     def redis_url(self) -> str:

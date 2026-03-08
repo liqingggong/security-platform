@@ -10,7 +10,6 @@ import {
 } from '@ant-design/icons'
 import api from '../utils/api'
 
-// Types for asset quality statistics (matches backend API response)
 interface CoverageItem {
   count: number
   rate: number
@@ -29,23 +28,21 @@ const AssetQuality = () => {
   const [loading, setLoading] = useState(false)
   const [enhancing, setEnhancing] = useState(false)
 
-  // Fetch quality statistics from API
   const fetchStats = async () => {
+    console.log('[AssetQuality] Fetching stats...')
     setLoading(true)
     try {
-      console.log('[AssetQuality Debug] Fetching stats...')
       const data = await api.get('/assets/stats/quality')
-      console.log('[AssetQuality Debug] Response:', data)
+      console.log('[AssetQuality] Got data:', data)
       setStats(data as AssetQualityStats)
     } catch (error: any) {
-      console.error('[AssetQuality Debug] Error:', error?.response?.data || error?.message || error)
-      message.error('加载资产质量统计失败')
+      console.error('[AssetQuality] Error:', error?.response?.data || error?.message)
+      message.error('加载资产质量统计失败: ' + (error?.response?.data?.detail || error?.message || '未知错误'))
     } finally {
       setLoading(false)
     }
   }
 
-  // Trigger asset enhancement
   const handleEnhance = async () => {
     setEnhancing(true)
     try {
@@ -55,31 +52,25 @@ const AssetQuality = () => {
         enable_fingerprint: true,
         enable_dedup: true,
       })
-
       message.success('资产增强任务已启动')
-      // Refresh stats after a short delay
-      setTimeout(() => {
-        fetchStats()
-      }, 1000)
+      setTimeout(() => fetchStats(), 1000)
     } catch (error: any) {
-      message.error('资产增强失败')
-      console.error('Error enhancing assets:', error)
+      console.error('[AssetQuality] Enhance error:', error?.response?.data || error?.message)
+      message.error('资产增强失败: ' + (error?.response?.data?.detail || error?.message || '未知错误'))
     } finally {
       setEnhancing(false)
     }
   }
 
-  // Get color based on coverage rate
   const getRateColor = (rate: number): string => {
-    if (rate >= 0.9) return '#22C55E'
-    if (rate >= 0.7) return '#F59E0B'
+    if (rate >= 90) return '#22C55E'
+    if (rate >= 70) return '#F59E0B'
     return '#EF4444'
   }
 
-  // Get progress status based on rate
   const getProgressStatus = (rate: number): 'success' | 'normal' | 'exception' => {
-    if (rate >= 0.9) return 'success'
-    if (rate >= 0.7) return 'normal'
+    if (rate >= 90) return 'success'
+    if (rate >= 70) return 'normal'
     return 'exception'
   }
 
@@ -95,19 +86,17 @@ const AssetQuality = () => {
     )
   }
 
-  const protocolRate = (stats?.protocol?.rate ?? 0) / 100
-  const fingerprintRate = (stats?.fingerprint?.rate ?? 0) / 100
-  const cdnRate = (stats?.cdn?.rate ?? 0) / 100
+  const protocolRate = stats?.protocol?.rate ?? 0
+  const fingerprintRate = stats?.fingerprint?.rate ?? 0
+  const cdnRate = stats?.cdn?.rate ?? 0
 
   return (
     <div>
-      {/* Page Header */}
       <div className="page-header">
         <h1 className="page-title">资产质量分析</h1>
         <p className="page-subtitle">查看资产覆盖率和数据质量统计</p>
       </div>
 
-      {/* Statistics Cards Row */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
           <Card
@@ -137,7 +126,7 @@ const AssetQuality = () => {
           >
             <Statistic
               title={<span style={{ color: '#94A3B8' }}>协议覆盖率</span>}
-              value={Math.round(protocolRate * 100)}
+              value={Math.round(protocolRate)}
               suffix="%"
               prefix={<CheckCircleOutlined style={{ color: getRateColor(protocolRate) }} />}
               valueStyle={{ color: getRateColor(protocolRate), fontWeight: 700 }}
@@ -155,7 +144,7 @@ const AssetQuality = () => {
           >
             <Statistic
               title={<span style={{ color: '#94A3B8' }}>指纹覆盖率</span>}
-              value={Math.round(fingerprintRate * 100)}
+              value={Math.round(fingerprintRate)}
               suffix="%"
               prefix={<ScanOutlined style={{ color: getRateColor(fingerprintRate) }} />}
               valueStyle={{ color: getRateColor(fingerprintRate), fontWeight: 700 }}
@@ -174,7 +163,7 @@ const AssetQuality = () => {
             <Statistic
               title={<span style={{ color: '#94A3B8' }}>CDN资产</span>}
               value={stats?.cdn?.count ?? 0}
-              suffix={` (${Math.round(cdnRate * 100)}%)`}
+              suffix={` (${Math.round(cdnRate)}%)`}
               prefix={<GlobalOutlined style={{ color: '#A78BFA' }} />}
               valueStyle={{ color: '#F8FAFC', fontWeight: 700 }}
             />
@@ -182,7 +171,6 @@ const AssetQuality = () => {
         </Col>
       </Row>
 
-      {/* Coverage Details */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={12}>
           <Card
@@ -193,9 +181,7 @@ const AssetQuality = () => {
               border: '1px solid rgba(148, 163, 184, 0.1)',
               borderRadius: 16,
             }}
-            headStyle={{
-              borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
-            }}
+            headStyle={{ borderBottom: '1px solid rgba(148, 163, 184, 0.1)' }}
           >
             <div style={{ marginBottom: 16 }}>
               <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
@@ -205,17 +191,17 @@ const AssetQuality = () => {
                 </span>
               </div>
               <Progress
-                percent={Math.round(protocolRate * 100)}
+                percent={Math.round(protocolRate)}
                 status={getProgressStatus(protocolRate)}
                 strokeColor={getRateColor(protocolRate)}
               />
             </div>
             <div style={{ color: '#94A3B8', fontSize: 14 }}>
-              {protocolRate >= 0.9 ? (
+              {protocolRate >= 90 ? (
                 <span style={{ color: '#22C55E' }}>
                   <CheckCircleOutlined /> 协议覆盖良好
                 </span>
-              ) : protocolRate >= 0.7 ? (
+              ) : protocolRate >= 70 ? (
                 <span style={{ color: '#F59E0B' }}>
                   <WarningOutlined /> 协议覆盖一般，建议补充
                 </span>
@@ -236,9 +222,7 @@ const AssetQuality = () => {
               border: '1px solid rgba(148, 163, 184, 0.1)',
               borderRadius: 16,
             }}
-            headStyle={{
-              borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
-            }}
+            headStyle={{ borderBottom: '1px solid rgba(148, 163, 184, 0.1)' }}
           >
             <div style={{ marginBottom: 16 }}>
               <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
@@ -248,17 +232,17 @@ const AssetQuality = () => {
                 </span>
               </div>
               <Progress
-                percent={Math.round(fingerprintRate * 100)}
+                percent={Math.round(fingerprintRate)}
                 status={getProgressStatus(fingerprintRate)}
                 strokeColor={getRateColor(fingerprintRate)}
               />
             </div>
             <div style={{ color: '#94A3B8', fontSize: 14 }}>
-              {fingerprintRate >= 0.9 ? (
+              {fingerprintRate >= 90 ? (
                 <span style={{ color: '#22C55E' }}>
                   <CheckCircleOutlined /> 指纹覆盖良好
                 </span>
-              ) : fingerprintRate >= 0.7 ? (
+              ) : fingerprintRate >= 70 ? (
                 <span style={{ color: '#F59E0B' }}>
                   <WarningOutlined /> 指纹覆盖一般，建议补充
                 </span>
@@ -272,7 +256,6 @@ const AssetQuality = () => {
         </Col>
       </Row>
 
-      {/* Multi-source Assets */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={24}>
           <Card
@@ -283,9 +266,7 @@ const AssetQuality = () => {
               border: '1px solid rgba(148, 163, 184, 0.1)',
               borderRadius: 16,
             }}
-            headStyle={{
-              borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
-            }}
+            headStyle={{ borderBottom: '1px solid rgba(148, 163, 184, 0.1)' }}
           >
             <Row gutter={16}>
               <Col xs={24} sm={12}>
@@ -308,13 +289,13 @@ const AssetQuality = () => {
               <Col xs={24} sm={12}>
                 <Statistic
                   title={<span style={{ color: '#94A3B8' }}>CDN资产占比</span>}
-                  value={Math.round(cdnRate * 100)}
+                  value={Math.round(cdnRate)}
                   suffix="%"
                   valueStyle={{ color: '#A78BFA', fontWeight: 700 }}
                 />
                 <div style={{ marginTop: 8 }}>
                   <Progress
-                    percent={Math.round(cdnRate * 100)}
+                    percent={Math.round(cdnRate)}
                     status="normal"
                     strokeColor="#A78BFA"
                   />
@@ -328,7 +309,6 @@ const AssetQuality = () => {
         </Col>
       </Row>
 
-      {/* Enhancement Control */}
       <Card
         title={<span style={{ color: '#F8FAFC' }}>数据增强</span>}
         loading={loading}
@@ -337,9 +317,7 @@ const AssetQuality = () => {
           border: '1px solid rgba(148, 163, 184, 0.1)',
           borderRadius: 16,
         }}
-        headStyle={{
-          borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
-        }}
+        headStyle={{ borderBottom: '1px solid rgba(148, 163, 184, 0.1)' }}
       >
         <div style={{ marginBottom: 24 }}>
           <h4 style={{ marginBottom: 12, color: '#F8FAFC' }}>资产增强功能说明</h4>

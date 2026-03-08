@@ -2,10 +2,8 @@ import { Table, Select, Button, Space, message, Input, Modal, InputNumber, Tag, 
 import { ReloadOutlined, DownloadOutlined, SearchOutlined, EyeOutlined, LinkOutlined, FilterOutlined } from '@ant-design/icons'
 import { assetsAPI, tasksAPI } from '../utils/api'
 import dayjs from 'dayjs'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { TablePageSkeleton } from '../components/PageSkeleton'
-
-// XLSX 库动态导入，减少基础包大小
 
 const Assets = () => {
   const [assets, setAssets] = useState<any[]>([])
@@ -13,31 +11,42 @@ const Assets = () => {
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<number | undefined>(undefined)
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 20 })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const [searchText, setSearchText] = useState<string>('')
   const [exportModalVisible, setExportModalVisible] = useState(false)
   const [exportLimit, setExportLimit] = useState(10000)
 
-  const loadAssets = useCallback(async (page?: number, size?: number) => {
-    if (!selectedTaskId) {
+  // Use ref to track latest values without triggering re-renders
+  const latestSearchText = useRef(searchText)
+  const latestSelectedTaskId = useRef(selectedTaskId)
+
+  useEffect(() => {
+    latestSearchText.current = searchText
+  }, [searchText])
+
+  useEffect(() => {
+    latestSelectedTaskId.current = selectedTaskId
+  }, [selectedTaskId])
+
+  const loadAssets = async (page: number, size: number) => {
+    const taskId = latestSelectedTaskId.current
+    if (!taskId) {
       setAssets([])
       return
     }
 
     setLoading(true)
     try {
-      const currentPage = page ?? pagination.current
-      const pageSize = size ?? pagination.pageSize
-      const skip = (currentPage - 1) * pageSize
-      const limit = pageSize
-      const params: any = { task_id: selectedTaskId, skip, limit }
-      if (searchText) {
-        params.search = searchText
+      const skip = (page - 1) * size
+      const limit = size
+      const params: any = { task_id: taskId, skip, limit }
+      const search = latestSearchText.current
+      if (search) {
+        params.search = search
       }
-      // DEBUG: 打印请求参数
-      console.log('[Assets Debug] Request params:', { page: currentPage, pageSize, skip, limit, taskId: selectedTaskId })
+      console.log('[Assets Debug] Request:', { page, size, skip, limit, taskId })
       const resp = await assetsAPI.list(params)
-      // DEBUG: 打印响应
       console.log('[Assets Debug] Response:', { items: resp?.items?.length, total: resp?.total })
       const items = Array.isArray(resp?.items) ? resp.items : []
       setAssets(items)
@@ -48,42 +57,34 @@ const Assets = () => {
     } finally {
       setLoading(false)
     }
-  }, [selectedTaskId, pagination, searchText])
+  }
 
   // Load tasks on mount
   useEffect(() => {
     loadTasks()
   }, [])
 
-  // Reset pagination when task changes
+  // Load assets when task changes
   useEffect(() => {
     if (!selectedTaskId) {
       setAssets([])
       setTotal(0)
-      setPagination((prev) => ({ ...prev, current: 1 }))
+      setCurrentPage(1)
       return
     }
-    setPagination((prev) => ({ ...prev, current: 1 }))
-  }, [selectedTaskId])
-
-  // Load assets when selected task changes
-  useEffect(() => {
-    if (!selectedTaskId) return
-    loadAssets(1, pagination.pageSize)
+    setCurrentPage(1)
+    loadAssets(1, pageSize)
   }, [selectedTaskId])
 
   // Load assets when search text changes
   useEffect(() => {
     if (!selectedTaskId) return
-    if (!searchText) {
-      loadAssets(1, pagination.pageSize)
-      return
-    }
     const timer = setTimeout(() => {
-      loadAssets(1, pagination.pageSize)
+      setCurrentPage(1)
+      loadAssets(1, pageSize)
     }, 500)
     return () => clearTimeout(timer)
-  }, [searchText, selectedTaskId, pagination.pageSize])
+  }, [searchText, selectedTaskId])
 
   const loadTasks = async () => {
     try {
@@ -95,8 +96,17 @@ const Assets = () => {
   }
 
   const handleSearch = () => {
-    setPagination((prev) => ({ ...prev, current: 1 }))
-    loadAssets(1, pagination.pageSize)
+    setCurrentPage(1)
+    loadAssets(1, pageSize)
+  }
+
+  const handlePageChange = (page: number, newPageSize?: number) => {
+    const size = newPageSize ?? pageSize
+    setCurrentPage(page)
+    if (newPageSize) {
+      setPageSize(newPageSize)
+    }
+    loadAssets(page, size)
   }
 
   const handleExport = () => {
@@ -178,7 +188,6 @@ const Assets = () => {
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
       } else if (format === 'xlsx') {
-        // 动态导入 XLSX 库，按需加载
         const XLSX = await import('xlsx')
         const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
         const wb = XLSX.utils.book_new()
@@ -250,7 +259,6 @@ const Assets = () => {
     )
   }
 
-  // 显示骨架屏避免白屏
   if (loading && tasks.length === 0) {
     return <TablePageSkeleton />
   }
@@ -263,7 +271,7 @@ const Assets = () => {
       align: 'center' as const,
       render: (_: any, __: any, index: number) => (
         <span style={{ color: '#64748B', fontSize: 13 }}>
-          {(pagination.current - 1) * pagination.pageSize + index + 1}
+          {(currentPage - 1) * pageSize + index + 1}
         </span>
       ),
     },
@@ -497,7 +505,7 @@ const Assets = () => {
           <Space size={12}>
             <Button
               icon={<ReloadOutlined />}
-              onClick={() => loadAssets(pagination.current, pagination.pageSize)}
+              onClick={() => loadAssets(currentPage, pageSize)}
               disabled={!selectedTaskId}
               style={{
                 borderRadius: 8,
@@ -595,8 +603,8 @@ const Assets = () => {
             rowKey="id"
             loading={loading}
             pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
+              current: currentPage,
+              pageSize: pageSize,
               total,
               showTotal: (t) => (
                 <span style={{ color: '#64748B' }}>
@@ -605,11 +613,7 @@ const Assets = () => {
               ),
               showSizeChanger: true,
               pageSizeOptions: ['10', '20', '50', '100'],
-              onChange: (page, pageSize) => {
-                const newPageSize = pageSize ?? pagination.pageSize
-                setPagination({ current: page, pageSize: newPageSize })
-                loadAssets(page, newPageSize)
-              },
+              onChange: handlePageChange,
             }}
             scroll={{ x: 1200 }}
             style={{ background: 'transparent' }}
@@ -629,11 +633,9 @@ const Assets = () => {
                 background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(56, 189, 248, 0.2) 100%)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: '#0EA5E9',
               }}
             >
-              <DownloadOutlined />
+              <DownloadOutlined style={{ color: '#0EA5E9' }} />
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 600, color: '#F8FAFC' }}>导出资产</div>
